@@ -2,7 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // Project Pages serve from /<repo>/. Keep dev at root, prefix only on build.
+  base: command === 'build' ? '/gittree/' : '/',
   plugins: [react()],
   define: {
     // isomorphic-git references `global` (Node.js) — alias to `globalThis` for browser
@@ -34,4 +36,4 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'isomorphic-git', 'date-fns'],
   },
-})
+}))
