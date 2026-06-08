@@ -1,4 +1,5 @@
 <p align="center">
+  <a href="https://stixez.github.io/gittree/"><img src="https://img.shields.io/badge/▶_Live_Demo-stixez.github.io%2Fgittree-d24b4b" alt="Live Demo" /></a>
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License" />
   <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" alt="React 18" />
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
@@ -9,6 +10,10 @@
 # GitTree
 
 **A git history visualizer that renders your repository as a dark, glowing graph.** Open a local repo or clone a public one — entirely in your browser. No install, no backend, nothing leaves your machine.
+
+### ▶ [**Try it live → stixez.github.io/gittree**](https://stixez.github.io/gittree/)
+
+> Runs entirely in your browser. Best in Chrome or Edge (the local-folder feature needs the File System Access API).
 
 Commits are glowing nodes on a dark obsidian canvas; merges are ornate gold landmarks; the checked-out branch's ancestry lights up as a gold **highlighted path.** It reads repository data with [isomorphic-git](https://isomorphic-git.org/) and draws everything on a custom **Canvas 2D** renderer, with layout computed in a **Web Worker** so it stays smooth on repositories of any size.
 
