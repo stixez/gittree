@@ -1,0 +1,8 @@
+/* GitTree styles */
+
+/* Smooth transitions for interactive elements only (not React Flow internals) */
+button, a, input, select, textarea, [role="button"] {
+  transition-property: color, background-color, border-color, transform, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
