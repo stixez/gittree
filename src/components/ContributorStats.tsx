@@ -3,19 +3,12 @@ import { BarChart2, X, Trophy, Calendar, Clock } from 'lucide-react'
 import { GitRepository } from '../types/git'
 import { useEscapeKey } from '../hooks/useKeyboard'
 import { authorLocalHour } from '../utils/commitTime'
+import { aggregateContributors } from '../utils/authors'
 import { PartialBadge } from './PartialBadge'
 
 interface ContributorStatsProps {
   repository: GitRepository
   onClose: () => void
-}
-
-interface ContributorData {
-  email: string
-  name: string
-  commits: number
-  firstCommit: number
-  lastCommit: number
 }
 
 interface DayOfWeekStats {
@@ -30,7 +23,6 @@ export function ContributorStats({ repository, onClose }: ContributorStatsProps)
   useEscapeKey(onClose)
 
   const stats = useMemo(() => {
-    const contributorMap = new Map<string, ContributorData>()
     const dayOfWeekMap: DayOfWeekStats = {
       'Sunday': 0,
       'Monday': 0,
@@ -47,23 +39,6 @@ export function ContributorStats({ repository, onClose }: ContributorStatsProps)
     }
 
     for (const commit of repository.commits) {
-      const email = commit.author.email
-
-      if (!contributorMap.has(email)) {
-        contributorMap.set(email, {
-          email,
-          name: commit.author.name,
-          commits: 0,
-          firstCommit: commit.author.timestamp,
-          lastCommit: commit.author.timestamp,
-        })
-      }
-
-      const contributor = contributorMap.get(email)!
-      contributor.commits++
-      contributor.firstCommit = Math.min(contributor.firstCommit, commit.author.timestamp)
-      contributor.lastCommit = Math.max(contributor.lastCommit, commit.author.timestamp)
-
       const date = new Date(commit.author.timestamp * 1000)
       const dayName = date.toLocaleDateString('en-US', { weekday: 'long' })
       dayOfWeekMap[dayName]++
@@ -73,8 +48,7 @@ export function ContributorStats({ repository, onClose }: ContributorStatsProps)
       hourMap[authorLocalHour(commit.author.timestamp, commit.author.timezoneOffset)]++
     }
 
-    const contributors = Array.from(contributorMap.values())
-      .sort((a, b) => b.commits - a.commits)
+    const contributors = aggregateContributors(repository.commits)
 
     return {
       contributors,

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Activity, X, Calendar, Users, GitMerge, ArrowRight } from 'lucide-react'
 import { GitRepository } from '../types/git'
 import { useEscapeKey } from '../hooks/useKeyboard'
+import { aggregateContributors } from '../utils/authors'
 import { PartialBadge } from './PartialBadge'
 
 interface RepositoryHealthProps {
@@ -31,12 +32,8 @@ export function RepositoryHealth({ repository, onClose }: RepositoryHealthProps)
     ).size
     const activeDaysPercentage = ageInDays > 0 ? ((activeDays / ageInDays) * 100).toFixed(1) : '0'
 
-    const contributorMap = new Map<string, number>()
-    for (const commit of repository.commits) {
-      const key = `${commit.author.name} <${commit.author.email}>`
-      contributorMap.set(key, (contributorMap.get(key) || 0) + 1)
-    }
-    const topContributor = Array.from(contributorMap.entries()).sort((a, b) => b[1] - a[1])[0]
+    const contributors = aggregateContributors(repository.commits)
+    const topContributor = contributors[0]
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const recentCommits = repository.commits.filter(
@@ -55,7 +52,7 @@ export function RepositoryHealth({ repository, onClose }: RepositoryHealthProps)
     healthScore += Math.min(25, (recentCommits / 30) * 25)
     const frequency = parseFloat(commitsPerDay)
     healthScore += Math.min(20, frequency * 4)
-    const contributorCount = contributorMap.size
+    const contributorCount = contributors.length
     healthScore += Math.min(15, contributorCount * 3)
     healthScore += Math.min(5, repository.branches.length)
     healthScore += Math.min(5, repository.tags.length)
@@ -69,9 +66,9 @@ export function RepositoryHealth({ repository, onClose }: RepositoryHealthProps)
       activeDays,
       activeDaysPercentage,
       topContributor: topContributor ? {
-        name: topContributor[0].split(' <')[0],
-        commits: topContributor[1],
-        percentage: ((topContributor[1] / repository.commits.length) * 100).toFixed(1),
+        name: topContributor.name,
+        commits: topContributor.commits,
+        percentage: ((topContributor.commits / repository.commits.length) * 100).toFixed(1),
       } : null,
       recentCommits,
       mergeCommits,
