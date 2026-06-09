@@ -23,6 +23,9 @@ interface GitVisualizationProps {
   onSelectionChange?: (oid: string | null) => void
   /** External request to select a commit (e.g. a click in the commit list). */
   selectRequest?: { oid: string } | null
+  /** External request to focus+center a commit without opening its details
+   * (e.g. stepping through search matches). New identity per request. */
+  focusRequest?: { oid: string } | null
   /** Filter the graph by an author (wired from the commit-details panel). */
   onFilterAuthor?: (name: string) => void
   /** Filter the graph to commits touching a path (wired to the changed-files list). */
@@ -34,7 +37,7 @@ const EMPTY_SCENE: Scene = { nodes: [], edges: [], bounds: { minX: 0, minY: 0, m
 // re-triggering the canvas render effect / repaint on every hover.
 const EMPTY_OIDS: ReadonlySet<string> = new Set<string>()
 
-export function GitVisualization({ repository, dirHandle, remoteUrl, highlightOids = null, initialCommitOid, onSelectionChange, selectRequest, onFilterAuthor, onFilterPath }: GitVisualizationProps) {
+export function GitVisualization({ repository, dirHandle, remoteUrl, highlightOids = null, initialCommitOid, onSelectionChange, selectRequest, focusRequest, onFilterAuthor, onFilterPath }: GitVisualizationProps) {
   const [scene, setScene] = useState<Scene>(EMPTY_SCENE)
   const [selectedCommit, setSelectedCommit] = useState<GitCommit | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -132,6 +135,12 @@ export function GitVisualization({ repository, dirHandle, remoteUrl, highlightOi
   useEffect(() => {
     if (selectRequest) handleSelect(selectRequest.oid)
   }, [selectRequest, handleSelect])
+
+  // Step-to-match (search): focus + center, but don't open the details panel —
+  // keeps Enter-cycling lightweight.
+  useEffect(() => {
+    if (focusRequest) navigateTo(focusRequest.oid)
+  }, [focusRequest, navigateTo])
 
   // Report the open commit upward so the URL can reflect it (deep-linkable).
   // Skip the initial mount report when nothing is selected — otherwise it would

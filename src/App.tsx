@@ -23,6 +23,7 @@ import { useDragDrop } from './hooks/useDragDrop'
 import { useDebouncedValue } from './hooks/useDebouncedValue'
 import { parseUrlState, updateUrlState, copyShareUrl } from './utils/urlState'
 import { uniqueAuthors } from './utils/authors'
+import { nextMatchIndex } from './utils/matchCursor'
 import { buildRefItems, buildCommitItems, buildActions } from './utils/paletteItems'
 import {
   GitBranch,
@@ -291,14 +292,32 @@ function App() {
   // Distinct author names for the author filter dropdown.
   const authors = useMemo(() => (repository ? uniqueAuthors(repository.commits) : []), [repository])
 
-  // Search matches within the (branch/date-filtered) graph — highlighted in context.
-  const highlightOids = useMemo(() => {
-    if (!graphRepository || !searchQuery.trim()) return null
+  // Search matches within the (branch/date-filtered) graph — highlighted in
+  // context. Ordered (newest-first, matching commit order) so Enter can step
+  // through them; the Set drives the canvas highlight.
+  const searchMatches = useMemo(() => {
+    if (!graphRepository || !searchQuery.trim()) return [] as string[]
     const query = searchQuery.toLowerCase()
-    const set = new Set<string>()
-    graphRepository.commits.forEach((c) => { if (matchesSearch(c.oid, query)) set.add(c.oid) })
-    return set
+    return graphRepository.commits.filter((c) => matchesSearch(c.oid, query)).map((c) => c.oid)
   }, [graphRepository, searchQuery, matchesSearch])
+
+  const highlightOids = useMemo(
+    () => (searchMatches.length ? new Set(searchMatches) : null),
+    [searchMatches],
+  )
+
+  // Which match the camera is parked on (-1 = none yet). Enter advances it.
+  const [matchIndex, setMatchIndex] = useState(-1)
+  const [focusRequest, setFocusRequest] = useState<{ oid: string } | null>(null)
+  // Reset the cursor whenever the match set changes (new query/filter).
+  useEffect(() => { setMatchIndex(-1) }, [searchMatches])
+
+  const goToMatch = useCallback((dir: 1 | -1) => {
+    if (!searchMatches.length) return
+    const next = nextMatchIndex(matchIndex, dir, searchMatches.length)
+    setMatchIndex(next)
+    setFocusRequest({ oid: searchMatches[next] })
+  }, [searchMatches, matchIndex])
 
   // The side commit list still narrows to search matches.
   const filteredRepository = useMemo(() => {
@@ -745,6 +764,10 @@ function App() {
                 value={searchQuery}
                 inputRef={searchInputRef}
                 placeholder="Search commits by message, author, email, or hash..."
+                onNext={() => goToMatch(1)}
+                onPrev={() => goToMatch(-1)}
+                matchCount={searchQuery.trim() ? searchMatches.length : undefined}
+                matchPosition={matchIndex + 1}
               />
             </div>
 
@@ -781,6 +804,7 @@ function App() {
                   initialCommitOid={selectedCommitOidForUrl}
                   onSelectionChange={(oid) => setSelectedCommitOidForUrl(oid ?? undefined)}
                   selectRequest={selectRequest}
+                  focusRequest={focusRequest}
                   onFilterAuthor={setSelectedAuthor}
                   onFilterPath={setPathFilter}
                 />
