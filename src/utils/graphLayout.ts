@@ -108,7 +108,7 @@ function topologicalSort(
     for (const parentOid of commit.parents) {
       const parent = commitMap.get(parentOid)
       if (!parent || visited.has(parentOid)) continue
-      const deg = (inDegree.get(parentOid) || 1) - 1
+      const deg = (inDegree.get(parentOid) ?? 0) - 1
       inDegree.set(parentOid, deg)
       if (deg <= 0) {
         // First parent gets priority — continue following this branch line
@@ -183,8 +183,16 @@ function assignLanes(
     if (parents.length === 0) {
       activeLanes[assignedLane] = null
     } else {
-      activeLanes[assignedLane] = parents[0]
-      oidToLane.set(parents[0], assignedLane)
+      if (oidToLane.has(parents[0])) {
+        // First parent is already owned by another lane (it's also a non-first
+        // parent of an earlier commit). Don't fight over it — free this lane so
+        // the existing owner keeps the parent's line, rather than yanking it
+        // into this (side) lane via a last-writer-wins overwrite.
+        activeLanes[assignedLane] = null
+      } else {
+        activeLanes[assignedLane] = parents[0]
+        oidToLane.set(parents[0], assignedLane)
+      }
 
       // 4. For merge commits, put additional parents in their own lanes
       for (let i = 1; i < parents.length; i++) {

@@ -16,19 +16,25 @@ export function monthLabel(ts: number): string {
 }
 
 /**
- * Produce one band per distinct (year, month), positioned at the first node
- * (scanning by increasing y) whose author timestamp falls in that month.
+ * Produce month bands down the time axis (larger y = older). Because y is
+ * topological order — only *roughly* chronological — a newer-month commit can
+ * appear below an older one around merges. We emit a band only when a node is
+ * not-newer than the last emitted band, which keeps the markers in
+ * chronological order down the axis instead of zig-zagging (e.g. Jun→Apr→May).
  * Deterministic and pure; bands come back sorted by y.
  */
 export function computeTimeBands(nodes: { y: number; authorTs: number }[]): TimeBand[] {
   const sorted = [...nodes].sort((a, b) => a.y - b.y)
   const seen = new Set<string>()
   const bands: TimeBand[] = []
+  let lastTs = Infinity // author ts of the last emitted band
   for (const n of sorted) {
+    if (n.authorTs > lastTs) continue // newer than the band above → out of order, skip
     const label = monthLabel(n.authorTs)
     if (seen.has(label)) continue
     seen.add(label)
     bands.push({ y: n.y, label })
+    lastTs = n.authorTs
   }
   return bands
 }

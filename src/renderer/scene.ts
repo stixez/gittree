@@ -53,6 +53,7 @@ export function buildScene(repository: GitRepository): Scene {
       significant,
       message: commit.message,
       authorName: commit.author.name,
+      authorEmail: commit.author.email,
       authorTs: commit.author.timestamp,
       parents: commit.parents,
     })

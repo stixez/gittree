@@ -26,8 +26,18 @@ export function hashString(s: string): number {
   return h >>> 0
 }
 
-export function authorColor(name: string): string {
-  return AUTHOR_COLORS[hashString(name) % AUTHOR_COLORS.length]
+export function authorColor(key: string): string {
+  return AUTHOR_COLORS[hashString(key) % AUTHOR_COLORS.length]
+}
+
+/**
+ * Identity key for the author lens: the email (lowercased) so the same person
+ * with varied name spellings gets one color, falling back to the name when the
+ * email is blank. Mirrors aggregateContributors so the graph and the
+ * contributor list agree on who's who.
+ */
+export function authorKey(node: { authorEmail: string; authorName: string }): string {
+  return node.authorEmail.trim().toLowerCase() || `name:${node.authorName.trim().toLowerCase()}`
 }
 
 function clamp01(n: number): number {
@@ -48,7 +58,7 @@ const RECENCY_NEW = '#e0784a' // warm ember — newest
 
 /** Color a node under the given mode. */
 export function nodeColor(node: SceneNode, mode: ColorMode, ctx: ColorCtx): string {
-  if (mode === 'author') return authorColor(node.authorName)
+  if (mode === 'author') return authorColor(authorKey(node))
   if (mode === 'recency') {
     const span = ctx.maxTs - ctx.minTs
     const t = span > 0 ? (node.authorTs - ctx.minTs) / span : 1

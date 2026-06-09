@@ -7,7 +7,7 @@ function node(partial: Partial<SceneNode>): SceneNode {
     oid: 'x', x: 0, y: 0, lane: 0, kind: 'commit', parentCount: 1,
     isHead: false, hasBranch: false, hasTag: false,
     branches: [], tags: [], significant: false,
-    message: '', authorName: '', authorTs: 0, parents: [],
+    message: '', authorName: '', authorEmail: '', authorTs: 0, parents: [],
     ...partial,
   }
 }

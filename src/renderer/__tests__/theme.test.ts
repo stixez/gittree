@@ -5,7 +5,7 @@ import type { SceneNode } from '../types'
 const base = (over: Partial<SceneNode>): SceneNode => ({
   oid: 'a', x: 0, y: 0, lane: 0, kind: 'commit', parentCount: 1,
   isHead: false, hasBranch: false, hasTag: false, branches: [], tags: [], significant: false,
-  message: 'm', authorName: 'n', authorTs: 0, parents: ['p'], ...over,
+  message: 'm', authorName: 'n', authorEmail: '', authorTs: 0, parents: ['p'], ...over,
 })
 
 describe('lodForZoom', () => {

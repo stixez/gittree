@@ -25,12 +25,17 @@ export function RepositoryHealth({ repository, onClose }: RepositoryHealthProps)
     const ageInDays = Math.floor((lastCommit.getTime() - firstCommit.getTime()) / (1000 * 60 * 60 * 24))
     const ageInYears = (ageInDays / 365).toFixed(1)
 
-    const commitsPerDay = ageInDays > 0 ? (repository.commits.length / ageInDays).toFixed(2) : '0'
+    // Inclusive day span so a repo whose commits all land in one day counts as
+    // 1 day (not 0) — avoids "0 commits/day" and divide-by-zero on young repos.
+    const spanDays = ageInDays + 1
+    const commitsPerDay = (repository.commits.length / spanDays).toFixed(2)
 
     const activeDays = new Set(
       repository.commits.map(c => new Date(c.author.timestamp * 1000).toISOString().split('T')[0])
     ).size
-    const activeDaysPercentage = ageInDays > 0 ? ((activeDays / ageInDays) * 100).toFixed(1) : '0'
+    // Clamp: active days are counted by UTC calendar date while spanDays is an
+    // elapsed-time span, so the ratio can nudge past 100% near day boundaries.
+    const activeDaysPercentage = Math.min(100, (activeDays / spanDays) * 100).toFixed(1)
 
     const contributors = aggregateContributors(repository.commits)
     const topContributor = contributors[0]

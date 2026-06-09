@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { BarChart2, X, Trophy, Calendar, Clock } from 'lucide-react'
 import { GitRepository } from '../types/git'
 import { useEscapeKey } from '../hooks/useKeyboard'
-import { authorLocalHour } from '../utils/commitTime'
+import { authorLocalHour, authorLocalDay } from '../utils/commitTime'
 import { aggregateContributors } from '../utils/authors'
 import { PartialBadge } from './PartialBadge'
 
@@ -38,13 +38,13 @@ export function ContributorStats({ repository, onClose }: ContributorStatsProps)
       hourMap[i] = 0
     }
 
+    // Both histograms use the AUTHOR's local time (not the viewer's), matching
+    // the panel's "author local time" label, so day-of-week and hour agree.
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
     for (const commit of repository.commits) {
-      const date = new Date(commit.author.timestamp * 1000)
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' })
+      const dayName = dayNames[authorLocalDay(commit.author.timestamp, commit.author.timezoneOffset)]
       dayOfWeekMap[dayName]++
 
-      // Author's local hour (not the viewer's timezone) so the histogram
-      // reflects when people actually commit.
       hourMap[authorLocalHour(commit.author.timestamp, commit.author.timezoneOffset)]++
     }
 

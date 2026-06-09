@@ -76,7 +76,9 @@ export function clearUrlState(...keys: (keyof UrlState)[]): void {
   
   const params = new URLSearchParams(
     Object.fromEntries(
-      Object.entries(current).filter(([_, v]) => v !== undefined)
+      // Same filter as updateUrlState so an empty-string value doesn't survive a
+      // clear and reappear as "?key=" in the URL.
+      Object.entries(current).filter(([_, v]) => v !== undefined && v !== null && v !== '')
     ) as Record<string, string>
   )
   

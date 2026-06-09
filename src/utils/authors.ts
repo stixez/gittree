@@ -41,7 +41,10 @@ export function aggregateContributors(commits: GitCommit[]): Contributor[] {
   const byEmail = new Map<string, Accumulator>()
   for (const commit of commits) {
     const { name, email, timestamp } = commit.author
-    const key = email.trim().toLowerCase()
+    // Group by email, but when the email is blank (git allows it, and imported
+    // history often has it) fall back to the name so unrelated authors with no
+    // email don't all collapse into one contributor.
+    const key = email.trim().toLowerCase() || `name:${name.trim().toLowerCase()}`
 
     let acc = byEmail.get(key)
     if (!acc) {

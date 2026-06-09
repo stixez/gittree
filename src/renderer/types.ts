@@ -24,6 +24,8 @@ export interface SceneNode {
   significant: boolean
   message: string
   authorName: string
+  /** Lowercased-on-use identity key for the author lens; matches contributor grouping. */
+  authorEmail: string
   authorTs: number
   parents: string[]
 }

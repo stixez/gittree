@@ -84,6 +84,24 @@ describe('aggregateContributors', () => {
     expect(reversed[0].name).toBe('Alpha')
   })
 
+  it('does not collapse distinct blank-email authors into one', () => {
+    const result = aggregateContributors([
+      authored('Alice', '', 1),
+      authored('Bob', '', 2),
+    ])
+    expect(result).toHaveLength(2)
+    expect(result.map((c) => c.name).sort()).toEqual(['Alice', 'Bob'])
+  })
+
+  it('merges same-name blank-email commits into one contributor', () => {
+    const result = aggregateContributors([
+      authored('Alice', '', 1),
+      authored('Alice', '  ', 2),
+    ])
+    expect(result).toHaveLength(1)
+    expect(result[0].commits).toBe(2)
+  })
+
   it('handles an empty list', () => {
     expect(aggregateContributors([])).toEqual([])
   })

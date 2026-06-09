@@ -207,13 +207,16 @@ async function getCommits(fs: any, dir: string, cache: object, opts?: LoadOption
 
   const uniqueTips = Array.from(tipToRefs.entries()) // [oid, ref][]
 
-  // Step 2: Sort so main/development branches come first (walk them deeper).
+  // Step 2: Sort so the default branch is walked deepest. Prefer the actual
+  // checked-out HEAD oid (covers repos whose default isn't a well-known name
+  // like "trunk"), then fall back to the conventional main-branch names.
+  const headOid = await git.resolveRef({ fs, dir, ref: 'HEAD' }).catch(() => null)
   const mainPatterns = ['refs/heads/main', 'refs/heads/master', 'refs/heads/development', 'refs/heads/develop', 'HEAD']
-  uniqueTips.sort((a, b) => {
-    const aMain = mainPatterns.includes(a[1]) ? 0 : 1
-    const bMain = mainPatterns.includes(b[1]) ? 0 : 1
-    return aMain - bMain
-  })
+  const tipRank = ([oid, ref]: [string, string]): number => {
+    if (headOid && oid === headOid) return 0
+    return mainPatterns.includes(ref) ? 1 : 2
+  }
+  uniqueTips.sort((a, b) => tipRank(a) - tipRank(b))
 
   onProgress?.({
     phase: 'Walking history',
@@ -284,12 +287,20 @@ async function getCommits(fs: any, dir: string, cache: object, opts?: LoadOption
   // Step 4: Walk remaining tips in small batches with shallow depth.
   // Shared history is already covered by the main branch walk above.
   const WALK_BATCH = 20
+  let branchTruncated = false
   for (let i = 1; i < uniqueTips.length; i += WALK_BATCH) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
     const batch = uniqueTips.slice(i, i + WALK_BATCH)
     const results = await Promise.allSettled(
       batch.map(([, ref]) => git.log({ fs, dir, ref, depth: branchDepth, cache }))
     )
+    // A branch walk that returns exactly branchDepth entries hit the cap, so its
+    // older history is missing — record it so isPartial is honest about it.
+    if (branchDepth !== undefined) {
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value.length >= branchDepth) branchTruncated = true
+      }
+    }
     addLogEntries(results)
     tipsWalked += batch.length
     onProgress?.({
@@ -317,7 +328,7 @@ async function getCommits(fs: any, dir: string, cache: object, opts?: LoadOption
 
   // Honest "this is a subset" signal: shallow clone, or the main walk hit its cap.
   const shallowExists = await isShallowRepo(fs)
-  const isPartial = historyTruncated(mainWalkCount, mainDepth ?? Infinity, shallowExists)
+  const isPartial = branchTruncated || historyTruncated(mainWalkCount, mainDepth ?? Infinity, shallowExists)
 
   return { commits: sorted, isPartial }
 }

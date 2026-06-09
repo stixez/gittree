@@ -16,8 +16,9 @@ export interface RemoteInfo {
 export function parseRemoteUrl(url: string): RemoteInfo | null {
   if (!url) return null
 
-  // Remove .git suffix
-  const cleanUrl = url.replace(/\.git$/, '')
+  // Remove a trailing slash, then a .git suffix (order matters so that
+  // "https://host/o/r.git/" and "https://host/o/r/" both normalize cleanly).
+  const cleanUrl = url.replace(/\/+$/, '').replace(/\.git$/, '')
 
   // GitHub patterns
   const githubHttps = cleanUrl.match(/https:\/\/github\.com\/([^/]+)\/([^/]+)/i)
@@ -33,17 +34,21 @@ export function parseRemoteUrl(url: string): RemoteInfo | null {
     }
   }
 
-  // GitLab patterns
-  const gitlabHttps = cleanUrl.match(/https:\/\/gitlab\.com\/([^/]+)\/([^/]+)/i)
-  const gitlabSsh = cleanUrl.match(/git@gitlab\.com:([^/]+)\/([^/]+)/i)
-  
-  if (gitlabHttps || gitlabSsh) {
-    const match = gitlabHttps || gitlabSsh
-    return {
-      platform: 'gitlab',
-      owner: match![1],
-      repo: match![2],
-      baseUrl: `https://gitlab.com/${match![1]}/${match![2]}`,
+  // GitLab patterns — capture the full path so nested subgroups
+  // (gitlab.com/group/subgroup/repo) keep the whole namespace as the owner.
+  const gitlabPath = (cleanUrl.match(/https:\/\/gitlab\.com\/(.+)/i)
+    || cleanUrl.match(/git@gitlab\.com:(.+)/i))?.[1]
+  if (gitlabPath) {
+    const segments = gitlabPath.split('/').filter(Boolean)
+    if (segments.length >= 2) {
+      const repo = segments.pop()!
+      const owner = segments.join('/')
+      return {
+        platform: 'gitlab',
+        owner,
+        repo,
+        baseUrl: `https://gitlab.com/${owner}/${repo}`,
+      }
     }
   }
 
@@ -134,12 +139,12 @@ export function getCompareLink(
  * Detects patterns like: #123, fixes #456, closes #789, GH-123
  */
 export function parseIssueReferences(message: string): number[] {
+  // The trailing \b after the digits rejects hex colors like "#1a2b3c"
+  // (where #(\d+) would otherwise match the leading "1"). The fixes/closes/
+  // resolves verbs are already covered by the bare #(\d+), so they're omitted.
   const patterns = [
-    /#(\d+)/g,                    // #123
-    /\bGH-(\d+)/gi,               // GH-123
-    /\bfixes?\s+#(\d+)/gi,        // fixes #123
-    /\bcloses?\s+#(\d+)/gi,       // closes #123
-    /\bresolves?\s+#(\d+)/gi,     // resolves #123
+    /#(\d+)\b/g,                  // #123
+    /\bGH-(\d+)\b/gi,             // GH-123
   ]
 
   const issues = new Set<number>()

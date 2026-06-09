@@ -5,7 +5,7 @@ import type { SceneNode } from '../types'
 const node = (oid: string, x: number, y: number): SceneNode => ({
   oid, x, y, lane: 0, kind: 'commit', parentCount: 1, isHead: false,
   hasBranch: false, hasTag: false, branches: [], tags: [], significant: false, message: '',
-  authorName: '', authorTs: 0, parents: [],
+  authorName: '', authorEmail: '', authorTs: 0, parents: [],
 })
 
 describe('SpatialIndex', () => {
