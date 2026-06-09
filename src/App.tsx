@@ -311,6 +311,16 @@ function App() {
   // Reset the per-path session cache when the repository changes.
   useEffect(() => { pathCacheRef.current = new Map() }, [repository])
 
+  // Clearing the filter must feel instant — don't wait out the scan's debounce
+  // window. Abort any in-flight scan and drop the match set the moment the input
+  // is emptied (e.g. the ✕ button or "clear filters").
+  useEffect(() => {
+    if (pathFilter.trim()) return
+    pathAbortRef.current?.abort()
+    setPathMatchOids(null)
+    setPathStatus({ computing: false, current: 0, total: 0 })
+  }, [pathFilter])
+
   // Compute which commits touched the path filter. Async + abortable (mirrors the
   // loader); results cached per path for the session.
   useEffect(() => {

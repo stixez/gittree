@@ -1,5 +1,6 @@
 import type { SceneNode } from './types'
 import { laneColor } from './theme'
+import { authorIdentityKey } from '../utils/authors'
 
 // Alternative ways to color commit nodes — the same graph as different lenses.
 
@@ -30,14 +31,10 @@ export function authorColor(key: string): string {
   return AUTHOR_COLORS[hashString(key) % AUTHOR_COLORS.length]
 }
 
-/**
- * Identity key for the author lens: the email (lowercased) so the same person
- * with varied name spellings gets one color, falling back to the name when the
- * email is blank. Mirrors aggregateContributors so the graph and the
- * contributor list agree on who's who.
- */
+/** Identity key for the author lens — shares {@link authorIdentityKey} with
+ * contributor aggregation so the graph and the contributor list agree. */
 export function authorKey(node: { authorEmail: string; authorName: string }): string {
-  return node.authorEmail.trim().toLowerCase() || `name:${node.authorName.trim().toLowerCase()}`
+  return authorIdentityKey(node.authorName, node.authorEmail)
 }
 
 function clamp01(n: number): number {

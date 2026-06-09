@@ -10,6 +10,16 @@ export function uniqueAuthors(commits: GitCommit[]): string[] {
   return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
 }
 
+/**
+ * Identity key for grouping commits by author: the email (lowercased) so a
+ * person with varied name spellings collapses to one identity, falling back to
+ * the name when the email is blank. Shared by contributor aggregation and the
+ * "color by author" lens so the graph and the contributor list always agree.
+ */
+export function authorIdentityKey(name: string, email: string): string {
+  return email.trim().toLowerCase() || `name:${name.trim().toLowerCase()}`
+}
+
 export interface Contributor {
   /** Display email (first-seen casing) for the grouped author. */
   email: string
@@ -41,10 +51,7 @@ export function aggregateContributors(commits: GitCommit[]): Contributor[] {
   const byEmail = new Map<string, Accumulator>()
   for (const commit of commits) {
     const { name, email, timestamp } = commit.author
-    // Group by email, but when the email is blank (git allows it, and imported
-    // history often has it) fall back to the name so unrelated authors with no
-    // email don't all collapse into one contributor.
-    const key = email.trim().toLowerCase() || `name:${name.trim().toLowerCase()}`
+    const key = authorIdentityKey(name, email)
 
     let acc = byEmail.get(key)
     if (!acc) {
