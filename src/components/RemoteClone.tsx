@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Globe, X, BookOpen, Trash2, Folder, ChevronLeft, AlertTriangle, Loader2 } from 'lucide-react'
 import { cloneRepository } from '../services/gitService'
 import {
@@ -16,6 +16,22 @@ interface RemoteCloneProps {
   onClose: () => void
 }
 
+// isomorphic-git's raw phase strings → friendlier labels. The remote does
+// "Counting/Compressing objects" before it streams a byte (the long opening
+// pause), then we download and index the packfile locally.
+const PHASE_LABELS: Record<string, string> = {
+  'Counting objects': 'Counting objects on the remote',
+  'Compressing objects': 'Compressing objects on the remote',
+  'Receiving objects': 'Downloading objects',
+  'Resolving deltas': 'Reconstructing history',
+  'Analyzing workdir': 'Writing files',
+  'Updating workdir': 'Writing files',
+}
+
+function prettyPhase(phase: string): string {
+  return PHASE_LABELS[phase] ?? phase
+}
+
 export function RemoteClone({ onCloned, onClose }: RemoteCloneProps) {
   const [url, setUrl] = useState('')
   const [cloning, setCloning] = useState(false)
@@ -24,6 +40,16 @@ export function RemoteClone({ onCloned, onClose }: RemoteCloneProps) {
   const [clonedRepos, setClonedRepos] = useState<ClonedRepo[]>([])
   const [showCloned, setShowCloned] = useState(false)
   const [allBranches, setAllBranches] = useState(false)
+  // Reassurance shown when a phase sits long enough to look stuck (the opening
+  // remote count and the local indexing step can both pause without events).
+  const [slow, setSlow] = useState(false)
+
+  useEffect(() => {
+    if (!cloning) { setSlow(false); return }
+    setSlow(false)
+    const id = setTimeout(() => setSlow(true), 8000)
+    return () => clearTimeout(id)
+  }, [cloning, progress?.phase])
 
   if (!isOPFSSupported()) {
     return (
@@ -58,7 +84,10 @@ export function RemoteClone({ onCloned, onClose }: RemoteCloneProps) {
 
     setCloning(true)
     setError(null)
-    setProgress(null)
+    // Show feedback immediately — isomorphic-git's first progress event only
+    // fires after the remote finishes counting/compressing, which can be many
+    // seconds; without this the dialog looks frozen on "Cloning…".
+    setProgress({ phase: 'Connecting to remote', loaded: 0, total: 0 })
 
     try {
       const repoName = extractRepoName(url)
@@ -72,6 +101,9 @@ export function RemoteClone({ onCloned, onClose }: RemoteCloneProps) {
       onCloned(dirHandle, repoName, url)
       onClose()
     } catch (err) {
+      // Clear progress so the error shows cleanly (no spinner/bar lingering
+      // above it) and a retry starts fresh.
+      setProgress(null)
       if (err instanceof Error) {
         setError(err.message)
       } else {
@@ -179,19 +211,47 @@ export function RemoteClone({ onCloned, onClose }: RemoteCloneProps) {
             {/* Progress */}
             {progress && (
               <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                  <span className="text-sm font-medium text-white font-sans">
-                    {progress.phase}...
-                  </span>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+                    {/* Only the phase label is a live region — it changes a
+                        handful of times, unlike the per-tick percentage. */}
+                    <span className="text-sm font-medium text-white font-sans truncate" aria-live="polite">
+                      {prettyPhase(progress.phase)}…
+                    </span>
+                  </div>
+                  {progress.total > 0 && (
+                    <span className="text-xs text-slate-400 font-mono tabular-nums flex-shrink-0">
+                      {progress.loaded.toLocaleString()}/{progress.total.toLocaleString()}
+                      {' '}({Math.round((progress.loaded / progress.total) * 100)}%)
+                    </span>
+                  )}
                 </div>
-                {progress.total > 0 && (
-                  <div className="w-full bg-slate-900 rounded-full h-1.5">
+                {/* Determinate when the phase reports a total; otherwise an
+                    indeterminate sweep so a no-progress phase never looks frozen. */}
+                <div
+                  className="relative w-full bg-slate-900 rounded-full h-1.5 overflow-hidden"
+                  role="progressbar"
+                  aria-label="Clone progress"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : undefined}
+                >
+                  {progress.total > 0 ? (
                     <div
                       className="bg-primary h-1.5 rounded-full transition-all duration-300"
                       style={{ width: `${(progress.loaded / progress.total) * 100}%` }}
                     />
-                  </div>
+                  ) : (
+                    <div className="animate-indeterminate bg-primary rounded-full" />
+                  )}
+                </div>
+                {/* Reassurance only while there's genuinely no movement (no total
+                    reported) — a moving determinate bar speaks for itself. */}
+                {slow && progress.total === 0 && (
+                  <p className="mt-2 text-xs text-slate-400">
+                    Large repositories can take a while over the public proxy — still working…
+                  </p>
                 )}
               </div>
             )}
