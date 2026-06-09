@@ -1,6 +1,6 @@
 {
   "name": "gittree",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Browser-based, interactive git history visualizer that renders your repository as a dark, glowing graph",
   "type": "module",
   "scripts": {
