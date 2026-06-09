@@ -161,9 +161,13 @@ export function drawNodes(ctx: CanvasRenderingContext2D, nodes: SceneNode[], s: 
       ctx.globalAlpha = alpha
     }
 
-    // ref badges (branch tips, tags, HEAD) — readable from LOD 1
+    // ref badges (branch tips, tags, HEAD) — always shown, even fully zoomed
+    // out, so branch names stay readable at any zoom. Cost is O(visible refs):
+    // only ref-bearing nodes get a badge, so it's cheap on typical repos. On
+    // repos with thousands of refs a fully zoomed-out view draws them all.
+    // See drawRefBadges note re: the LOD cost ceiling this intentionally drops.
     let labelX = p.sx + r + 6
-    if (lod > 0 && !isDim) {
+    if (!isDim) {
       labelX = drawRefBadges(ctx, n, p.sx + r + 6, p.sy)
     }
 
