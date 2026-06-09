@@ -32,6 +32,14 @@ function prettyPhase(phase: string): string {
   return PHASE_LABELS[phase] ?? phase
 }
 
+// Small, public repos that actually clone in-browser. (Giant repos like the
+// Linux kernel exceed what the CORS proxy + browser memory can handle, so they
+// don't belong here as suggestions.)
+const EXAMPLE_REPOS = [
+  { label: 'stixez/gittree', url: 'https://github.com/stixez/gittree.git' },
+  { label: 'sindresorhus/slugify', url: 'https://github.com/sindresorhus/slugify.git' },
+]
+
 export function RemoteClone({ onCloned, onClose }: RemoteCloneProps) {
   const [url, setUrl] = useState('')
   const [cloning, setCloning] = useState(false)
@@ -190,9 +198,20 @@ export function RemoteClone({ onCloned, onClose }: RemoteCloneProps) {
                   }
                 }}
               />
-              <p className="mt-2 text-xs text-slate-500">
-                Examples: https://github.com/torvalds/linux.git or https://gitlab.com/user/project.git
-              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span>Try:</span>
+                {EXAMPLE_REPOS.map((ex) => (
+                  <button
+                    key={ex.url}
+                    type="button"
+                    onClick={() => setUrl(ex.url)}
+                    disabled={cloning}
+                    className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 font-mono cursor-pointer transition-colors"
+                  >
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
 
               <label className="mt-3 flex items-center gap-2 cursor-pointer select-none">
                 <input

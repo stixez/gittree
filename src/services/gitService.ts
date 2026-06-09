@@ -3,6 +3,7 @@ import http from 'isomorphic-git/http/web'
 import { GitCommit, GitBranch, GitTag, GitRepository } from '../types/git'
 import { historyTruncated } from '../utils/partialLoad'
 import { splitPath, resolvePathOid, type TreeEntry } from '../utils/treePath'
+import { describeCloneError } from './cloneError'
 
 export interface FileChange {
   path: string
@@ -864,6 +865,6 @@ export async function cloneRepository(
     })
   } catch (error) {
     console.error('Clone error:', error)
-    throw new Error(`Failed to clone repository: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    throw new Error(describeCloneError(error))
   }
 }
