@@ -20,6 +20,7 @@ import { parseLocalRepository, loadFullRepository, findCommitsTouchingPath, Load
 import { GitRepository } from './types/git'
 import { useKeyboard } from './hooks/useKeyboard'
 import { useDragDrop } from './hooks/useDragDrop'
+import { useDebouncedValue } from './hooks/useDebouncedValue'
 import { parseUrlState, updateUrlState, copyShareUrl } from './utils/urlState'
 import { uniqueAuthors } from './utils/authors'
 import { buildRefItems, buildCommitItems, buildActions } from './utils/paletteItems'
@@ -78,8 +79,11 @@ function App() {
   const [selectRequest, setSelectRequest] = useState<{ oid: string } | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   // Path filter: async (commits touching a file/dir prefix), computed off the
-  // synchronous filter path. See the compute effect below.
+  // synchronous filter path. See the compute effect below. The input updates
+  // pathFilter on every keystroke, but the (expensive, full-history) scan keys
+  // off a debounced copy so it only runs once the user pauses typing.
   const [pathFilter, setPathFilter] = useState('')
+  const debouncedPathFilter = useDebouncedValue(pathFilter, 300)
   const [pathMatchOids, setPathMatchOids] = useState<Set<string> | null>(null)
   const [pathStatus, setPathStatus] = useState<{ computing: boolean; current: number; total: number }>({ computing: false, current: 0, total: 0 })
   const pathAbortRef = useRef<AbortController | null>(null)
@@ -311,7 +315,7 @@ function App() {
   // loader); results cached per path for the session.
   useEffect(() => {
     pathAbortRef.current?.abort()
-    const path = pathFilter.trim()
+    const path = debouncedPathFilter.trim()
     if (!repository || !dirHandle || !path) {
       setPathMatchOids(null)
       setPathStatus({ computing: false, current: 0, total: 0 })
@@ -343,7 +347,7 @@ function App() {
         setPathStatus({ computing: false, current: 0, total: 0 })
       })
     return () => controller.abort()
-  }, [repository, dirHandle, pathFilter])
+  }, [repository, dirHandle, debouncedPathFilter])
 
   const handleClearFilters = useCallback(() => {
     setSearchQuery('')
